@@ -37,21 +37,30 @@ class TestStore(unittest.TestCase):
 
         self.discount = VisibleProductDiscount(datetime.datetime(2018, 6, 1), datetime.datetime(2020, 5, 17), 10)
         self.discount1 = VisibleProductDiscount(datetime.datetime(2018, 6, 1), datetime.datetime(2020, 5, 17), 30)
+        self.discount1_1 = VisibleProductDiscount(datetime.datetime(2018, 6, 1),datetime.datetime(2019,4,15),100)
+        self.discount1_2 = VisibleProductDiscount(datetime.datetime(2018, 6, 1), datetime.datetime(2021, 4, 15), 100)
         self.discount2 = ConditionalProductDiscount(datetime.datetime(2018, 6, 1), datetime.datetime(2020, 5, 17), 20, 2, 2)
 
         self.store.discounts[self.discount.id] = self.discount
         self.store.discounts[self.discount1.id] = self.discount1
+        self.store.discounts[self.discount1_1.id] = self.discount1_1
+        self.store.discounts[self.discount1_2.id] = self.discount1_2
+        self.store.discounts[self.discount2.id] = self.discount2
 
         self.discount.products_in_discount["Apple"] = self.store.inventory.products["Apple"]
         self.discount.products_in_discount["Tomato"] = self.store.inventory.products["Tomato"]
         self.discount1.products_in_discount["Apple"] = self.store.inventory.products["Apple"]
         self.discount.products_in_discount["Carrot"] = self.store.inventory.products["Carrot"]
-        self.discount.products_in_discount["Keyboard"] = self.store.inventory.products["Keyboard"]
+        self.discount1.products_in_discount["Keyboard"] = self.store.inventory.products["Keyboard"]
+        self.discount1_1.products_in_discount["Keyboard"] = self.store.inventory.products["Keyboard"]
+        self.discount1_2.products_in_discount["Iphone"] = self.store.inventory.products["Iphone"]
+        self.discount2.products_in_discount["Orange"] = self.store.inventory.products["Orange"]
 
         self.basket = Basket(self.store.store_id)
         self.basket.products["Apple"] = (self.store.inventory.products["Apple"], 10)
         self.basket.products["Keyboard"] = (self.store.inventory.products["Keyboard"], 5)
-        self.basket.products["Carrot"] = (self.store.inventory.products["Carrot"], 1)
+        self.basket.products["Carrot"] = (self.store.inventory.products["Carrot"], 5)
+        self.basket.products["Iphone"] = (self.store.inventory.products["Iphone"],10)
 
     def test_appoint_owner_one(self):
         # There is no such owner
@@ -298,7 +307,25 @@ class TestStore(unittest.TestCase):
 
     def test_basket_discount(self):
         view_cart_dict = self.store.calculate_basket_price(self.basket)
-        x = 5
+        self.assertEqual(view_cart_dict["Apple"][2], 120)
+        self.assertEqual(view_cart_dict["Carrot"][2], 90)
+        self.assertEqual(view_cart_dict["Keyboard"][2], 70)
+        self.assertEqual(view_cart_dict["Iphone"][2], 0)
+
+    def test_basket_conditional_discount(self):
+        self.basket2 = Basket(self.store.store_id)
+        self.basket2.products["Orange"] = (self.store.inventory.products["Orange"],4)
+        cart2 = self.store.calculate_basket_price(self.basket2)
+        self.assertEqual(72, cart2["Orange"][2])
+
+    def test_basket_dual_discount(self):
+        self.basket3 = Basket(self.store.store_id)
+        self.discount2.products_in_discount["Apple"] = self.store.inventory.products["Apple"]
+        self.basket3.products["Apple"] = (self.store.inventory.products["Apple"], 10)
+        cart = self.store.calculate_basket_price(self.basket3)
+        self.assertEqual( 110.4,cart["Apple"][2])
+
+
 
     def appoint_managers_to_owners(self, users):
         for i in range(0, len(users) - 1):
